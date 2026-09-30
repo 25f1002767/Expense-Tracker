@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
+const crypto = require("crypto");
 
 require("dotenv").config();
 
@@ -10,8 +11,12 @@ const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
 const analyticsRoutes = require("./routes/analytics");
 const budgetRoutes = require("./routes/budgets");
+
 const { verifyRequestOrigin } = require("./middleware/auth");
-const { errorHandler, notFound } = require("./middleware/errorHandler");
+const {
+  errorHandler,
+  notFound,
+} = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -20,8 +25,22 @@ const app = express();
 // =========================
 
 const PORT = process.env.PORT || 5000;
+
 const FRONTEND_URL =
   process.env.FRONTEND_URL || "http://localhost:5173";
+
+// =========================
+// JWT Secret
+// =========================
+
+// Render may not provide JWT_SECRET.
+// Generate one automatically if it is missing or too short.
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  process.env.JWT_SECRET = crypto.randomBytes(32).toString("hex");
+
+  console.log("JWT_SECRET generated automatically.");
+}
 
 // =========================
 // Security & Middleware
@@ -66,8 +85,11 @@ app.get("/api/health", (_request, response) => {
 // =========================
 
 app.use("/api/auth", authRoutes);
+
 app.use("/api/transactions", transactionRoutes);
+
 app.use("/api/analytics", analyticsRoutes);
+
 app.use("/api/budgets", budgetRoutes);
 
 // =========================
@@ -75,6 +97,7 @@ app.use("/api/budgets", budgetRoutes);
 // =========================
 
 app.use(notFound);
+
 app.use(errorHandler);
 
 // =========================
@@ -82,23 +105,12 @@ app.use(errorHandler);
 // =========================
 
 async function startServer() {
-  // Use ONLY MONGO_URI.
-  // This prevents an old MONGODB_URI environment variable
-  // from overriding the current MongoDB connection string.
   const mongoUri = process.env.MONGO_URI;
 
+  // MongoDB URI is still required.
   if (!mongoUri) {
     throw new Error(
       "Set MONGO_URI in backend/.env before starting the server."
-    );
-  }
-
-  if (
-    !process.env.JWT_SECRET ||
-    process.env.JWT_SECRET.length < 32
-  ) {
-    throw new Error(
-      "Set JWT_SECRET to a random value of at least 32 characters in backend/.env."
     );
   }
 
@@ -111,20 +123,52 @@ async function startServer() {
 
     console.log("Connected to MongoDB");
   } catch (error) {
-    console.error("\n========== MONGODB CONNECTION FAILED ==========");
+    console.error(
+      "\n========== MONGODB CONNECTION FAILED =========="
+    );
+
     console.error("Error name:", error.name);
+
     const message = String(error.message || "").toLowerCase();
-    const category = message.includes("authentication") || message.includes("bad auth")
-      ? "Atlas rejected database authentication. Check the database username/password and URL-encode reserved characters."
-      : message.includes("whitelist") || message.includes("ip address")
-        ? "Atlas Network Access rejected this connection. Add your current public IP to the project IP access list."
-        : "MongoDB connection failed. Check the URI, Atlas Network Access, and database-user permissions.";
+
+    let category;
+
+    if (
+      message.includes("authentication") ||
+      message.includes("bad auth")
+    ) {
+      category =
+        "Atlas rejected database authentication. Check the database username/password and MongoDB URI.";
+    } else if (
+      message.includes("whitelist") ||
+      message.includes("ip address")
+    ) {
+      category =
+        "Atlas Network Access rejected this connection. Check your Atlas IP access list.";
+    } else {
+      category =
+        "MongoDB connection failed. Check the URI, Atlas Network Access, and database-user permissions.";
+    }
+
     console.error("Diagnostic:", category);
-    if (error.code) console.error("MongoDB error code:", error.code);
-    console.error("================================================\n");
+
+    if (error.code) {
+      console.error(
+        "MongoDB error code:",
+        error.code
+      );
+    }
+
+    console.error(
+      "================================================\n"
+    );
 
     throw error;
   }
+
+  // =========================
+  // Start Express Server
+  // =========================
 
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -139,21 +183,32 @@ async function startServer() {
 
 if (require.main === module) {
   startServer().catch(async (error) => {
-    console.error("\n========== SERVER STARTUP FAILED ==========");
+    console.error(
+      "\n========== SERVER STARTUP FAILED =========="
+    );
 
     if (
-      error.message?.startsWith("Set MONGO_URI") ||
-      error.message?.startsWith("Set JWT_SECRET")
+      error.message?.startsWith("Set MONGO_URI")
     ) {
       console.error(error.message);
     } else {
       console.error(
-        "The server could not connect to MongoDB."
+        "The server could not start."
       );
-      console.error("Please check the MongoDB error shown above.");
+
+      console.error(
+        "Please check the MongoDB connection and environment variables."
+      );
+
+      console.error(
+        "Error:",
+        error.message
+      );
     }
 
-    console.error("============================================\n");
+    console.error(
+      "============================================\n"
+    );
 
     await mongoose.disconnect();
 
