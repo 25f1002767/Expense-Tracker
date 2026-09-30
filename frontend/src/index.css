@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  color: #1c302a;
+  background: #f3f5f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-size: 14px;
+  color-scheme: light;
+  --ink: #1c302a;
+  --muted: #738079;
+  --line: #e4e9e2;
+  --paper: #ffffff;
+  --canvas: #f3f5f0;
+  --forest: #173e35;
+  --forest-soft: #e8f0e9;
+  --mint: #bde3c9;
+  --mint-strong: #438a66;
+  --coral: #d96f51;
+  --coral-soft: #fbede6;
+  --yellow: #e5c86f;
+  --mono: 'DM Mono', Consolas, monospace;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; }
+button, input, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+a { color: inherit; }
+#root { min-height: 100vh; }
+::selection { color: #173e35; background: #bde3c9; }
